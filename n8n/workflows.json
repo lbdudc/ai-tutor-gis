@@ -1,0 +1,2562 @@
+[
+    {
+        "createdAt": "2025-06-20T09:54:40.638Z",
+        "updatedAt": "2025-07-10T12:22:28.880Z",
+        "id": "VhiaoL7up2KBPmYr",
+        "name": "load_pdfs",
+        "active": false,
+        "isArchived": false,
+        "nodes":
+        [
+            {
+                "parameters":
+                {},
+                "id": "2a1f1816-5dbf-4ee6-ac27-aa7ab99fe1f8",
+                "name": "When clicking \"Test workflow\"",
+                "type": "n8n-nodes-base.manualTrigger",
+                "typeVersion": 1,
+                "position":
+                [
+                    140,
+                    120
+                ]
+            },
+            {
+                "parameters":
+                {
+                    "fieldToSplitOut": "data",
+                    "options":
+                    {}
+                },
+                "id": "4426040e-f7ba-43d3-8e9f-a4199bf31c07",
+                "name": "Split Out",
+                "type": "n8n-nodes-base.splitOut",
+                "typeVersion": 1,
+                "position":
+                [
+                    1560,
+                    -60
+                ]
+            },
+            {
+                "parameters":
+                {
+                    "jsonMode": "expressionData",
+                    "jsonData": "={{ $json.content }}",
+                    "options":
+                    {
+                        "metadata":
+                        {
+                            "metadataValues":
+                            [
+                                {
+                                    "name": "=source",
+                                    "value": "={{ $json.metadata.source }}"
+                                },
+                                {
+                                    "name": "chunk_id",
+                                    "value": "={{ $json.metadata.chunk_id }}"
+                                },
+                                {
+                                    "name": "page",
+                                    "value": "={{ $json.metadata.page }}"
+                                },
+                                {
+                                    "name": "subject",
+                                    "value": "={{ $json.metadata.nombre_asignatura }}"
+                                },
+                                {
+                                    "name": "topics",
+                                    "value": "={{ $json.metadata.core_topics }}"
+                                },
+                                {
+                                    "name": "authors",
+                                    "value": "={{ $json.metadata.autores_profesores }}"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "id": "8c6bf065-6538-46cd-a391-6de724430fdf",
+                "name": "Default Data Loader",
+                "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+                "typeVersion": 1,
+                "position":
+                [
+                    1960,
+                    40
+                ]
+            },
+            {
+                "parameters":
+                {
+                    "chunkSize": 4000
+                },
+                "id": "18ed6d2e-14e7-48fb-96dc-52e212b9857c",
+                "name": "Token Splitter",
+                "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+                "typeVersion": 1,
+                "position":
+                [
+                    1980,
+                    200
+                ]
+            },
+            {
+                "parameters":
+                {
+                    "modelName": "models/text-embedding-004"
+                },
+                "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+                "typeVersion": 1,
+                "position":
+                [
+                    1780,
+                    60
+                ],
+                "id": "b389cfc7-9c12-46a3-850a-652eaebf2b7a",
+                "name": "Embeddings Google Gemini",
+                "credentials":
+                {
+                    "googlePalmApi":
+                    {
+                        "id": "dz1rlHAydxuq2rod",
+                        "name": "Google Gemini(PaLM) Api account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "fileSelector": "/data/pdf_repo/*.pdf",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.readWriteFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    560,
+                    -180
+                ],
+                "id": "f3a1796a-dd72-427a-9c99-58bd0df26531",
+                "name": "Read/Write Files from Disk"
+            },
+            {
+                "parameters":
+                {
+                    "operation": "pdf",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.extractFromFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    760,
+                    -300
+                ],
+                "id": "5e020da9-f746-469c-95ab-535afb5ff122",
+                "name": "Extract from File"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "const allItems = $input.first().json.documents;\nconst size = 1000;\nconst outputItems = [];\n\nfor (const item of allItems) {\n  const text = item.text || '';\n  const fileName = item.fileName || 'unknown.pdf';\n\n  for (let i = 0; i < text.length; i += size) {\n    outputItems.push({\n      json: {\n        content: text.slice(i, i + size),\n        metadata: {\n          source: fileName,\n          chunk_id: Math.floor(i / size)\n        }\n      }\n    });\n  }\n}\n\nreturn outputItems;\n"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    1200,
+                    -300
+                ],
+                "id": "b261556d-7e5d-4854-810e-851fb14b7419",
+                "name": "Code"
+            },
+            {
+                "parameters":
+                {
+                    "mode": "combine",
+                    "combineBy": "combineByPosition",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.merge",
+                "typeVersion": 3.2,
+                "position":
+                [
+                    960,
+                    -300
+                ],
+                "id": "3bbd3ff2-4664-4e77-9a4b-5cd3488d8608",
+                "name": "Merge"
+            },
+            {
+                "parameters":
+                {
+                    "mode": "insert",
+                    "qdrantCollection":
+                    {
+                        "__rl": true,
+                        "value": "postgis-tutor",
+                        "mode": "list",
+                        "cachedResultName": "postgis-tutor"
+                    },
+                    "options":
+                    {}
+                },
+                "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+                "typeVersion": 1.2,
+                "position":
+                [
+                    1780,
+                    -160
+                ],
+                "id": "8353a1e8-b1c9-42d4-b700-38ec7c0b4e02",
+                "name": "Qdrant Vector Store",
+                "credentials":
+                {
+                    "qdrantApi":
+                    {
+                        "id": "alUYEZfRK6APtaav",
+                        "name": "QdrantApi account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "fileSelector": "/data/processed_data.jsonl",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.readWriteFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    1100,
+                    -20
+                ],
+                "id": "41d4701f-db67-4647-bff3-ef3c81e94b23",
+                "name": "Read/Write Files from Disk1"
+            },
+            {
+                "parameters":
+                {
+                    "operation": "fromJson",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.extractFromFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    1300,
+                    -20
+                ],
+                "id": "f56b8dda-18c3-4f03-9e94-bf86a2942652",
+                "name": "Extract from File1"
+            },
+            {
+                "parameters":
+                {
+                    "fileSelector": "/data/pdf_repo/*.pdf",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.readWriteFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    380,
+                    400
+                ],
+                "id": "1436d12a-8bf9-40c6-81aa-1ad0800375b8",
+                "name": "Read/Write Files from Disk2"
+            },
+            {
+                "parameters":
+                {
+                    "operation": "binaryToPropery",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.extractFromFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    620,
+                    400
+                ],
+                "id": "a3694e1d-9d7c-4c97-9d6f-256e61452591",
+                "name": "Transform to base64"
+            },
+            {
+                "parameters":
+                {
+                    "method": "POST",
+                    "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpQueryAuth",
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={\n  \"system_instruction\": {\n    \"parts\": [\n      {\n        \"text\": \"Eres un motor especializado en an├ö├Â┬úÔö£┬ílisis e indexaci├ö├Â┬ú├ö├Â├®n de documentos. Tu ├ö├Â┬ú├ö├▓├ªnico prop├ö├Â┬ú├ö├Â├®sito es procesar un documento PDF proporcionado y generar una ├ö├Â┬ú├ö├▓├ªnica descripci├ö├Â┬ú├ö├Â├®n altamente detallada, completa y optimizada para la b├ö├Â┬ú├ö├▓├ªsqueda. Este resultado ser├ö├Â┬úÔö£┬í ingerido directamente en un sistema de Generaci├ö├Â┬ú├ö├Â├®n Aumentada por Recuperaci├ö├Â┬ú├ö├Â├®n (RAG) para maximizar la capacidad de b├ö├Â┬ú├ö├▓├ªsqueda y la precisi├ö├Â┬ú├ö├Â├®n en la recuperaci├ö├Â┬ú├ö├Â├®n de contenido. Tu an├ö├Â┬úÔö£┬ílisis debe ser exhaustivo.\\n\\n**Objetivo Principal:**\\nAnaliza el archivo PDF proporcionado en su totalidad. Genera un ├ö├Â┬ú├ö├▓├ªnico resultado de texto continuo que describa el contenido, los elementos visuales y el contexto impl├ö├Â┬úÔö¼├¡cito del documento con extremo detalle y riqueza.\\n\\n---\\n\\n**Instrucciones Fundamentales:**\\n\\n**1. An├ö├Â┬úÔö£┬ílisis Comprensivo del Contenido:**\\n*   **Resumen Integral:** Comienza con un resumen completo del tema principal del documento, su prop├ö├Â┬ú├ö├Â├®sito, la audiencia a la que se dirige y la narrativa o argumento general.\\n*   **Extracci├ö├Â┬ú├ö├Â├®n Detallada:** Identifica y detalla meticulosamente todos los temas clave, subtemas, argumentos, puntos de datos, estad├ö├Â┬úÔö¼├¡sticas, hallazgos y conclusiones presentados en el texto.\\n*   **Reconocimiento de Entidades:** Extrae y lista todas las entidades nombradas importantes, incluyendo, pero no limitado a: personas, organizaciones, corporaciones, ubicaciones, fechas, nombres de productos, est├ö├Â┬úÔö£┬índares y terminolog├ö├Â┬úÔö¼├¡a t├ö├Â┬úÔö¼┬½cnica.\\n\\n**2. Enriquecimiento Sem├ö├Â┬úÔö£┬íntico y Contextual para RAG:**\\n*   **Expansi├ö├Â┬ú├ö├Â├®n de Palabras Clave y Sin├ö├Â┬ú├ö├Â├®nimos:** Esta es una tarea cr├ö├Â┬úÔö¼├¡tica. Para cada concepto, tema, entidad u objeto descrito, DEBES usar un conjunto rico y variado de palabras clave, sin├ö├Â┬ú├ö├Â├®nimos y t├ö├Â┬úÔö¼┬½rminos relacionados. Tu objetivo es anticipar todas las posibles consultas de los usuarios.\\n    *   *Ejemplo:* Si el documento habla de un \\\"coche\\\", tu descripci├ö├Â┬ú├ö├Â├®n debe incluir tambi├ö├Â┬úÔö¼┬½n t├ö├Â┬úÔö¼┬½rminos como \\\"autom├ö├Â┬ú├ö├Â├®vil\\\", \\\"veh├ö├Â┬úÔö¼├¡culo\\\", \\\"auto\\\" y tipos espec├ö├Â┬úÔö¼├¡ficos si se mencionan (p. ej., \\\"sed├ö├Â┬úÔö£┬ín\\\", \\\"SUV\\\", \\\"veh├ö├Â┬úÔö¼├¡culo el├ö├Â┬úÔö¼┬½ctrico\\\", \\\"VE\\\").\\n*   **Aclaraci├ö├Â┬ú├ö├Â├®n Contextual e Informaci├ö├Â┬ú├ö├Â├®n Impl├ö├Â┬úÔö¼├¡cita:** Ve m├ö├Â┬úÔö£┬ís all├ö├Â┬úÔö£┬í del texto literal. Analiza el material para identificar conceptos que est├ö├Â┬úÔö£┬ín impl├ö├Â┬úÔö¼├¡citos pero no se declaran expl├ö├Â┬úÔö¼├¡citamente. Agrega esta informaci├ö├Â┬ú├ö├Â├®n aclaratoria y contexto a la descripci├ö├Â┬ú├ö├Â├®n.\\n    *   *Ejemplo:* Si un documento menciona una regulaci├ö├Â┬ú├ö├Â├®n por su acr├ö├Â┬ú├ö├Â├®nimo, como \\\"RGPD\\\", debes expandirlo en la descripci├ö├Â┬ú├ö├Â├®n, agregando \\\"Reglamento General de Protecci├ö├Â┬ú├ö├Â├®n de Datos\\\", \\\"ley europea de privacidad de datos\\\", \\\"cumplimiento de seguridad de datos\\\" e \\\"protecci├ö├Â┬ú├ö├Â├®n de informaci├ö├Â┬ú├ö├Â├®n de identificaci├ö├Â┬ú├ö├Â├®n personal (IIP)\\\".\\n    *   *Ejemplo:* Si un gr├ö├Â┬úÔö£┬ífico muestra un fuerte aumento en las ventas despu├ö├Â┬úÔö¼┬½s de una \\\"campa├ö├Â┬ú├ö├╗├åa de marketing del T3\\\", tu descripci├ö├Â┬ú├ö├Â├®n debe conectar expl├ö├Â┬úÔö¼├¡citamente estos hechos, indicando: \\\"La campa├ö├Â┬ú├ö├╗├åa de marketing del tercer trimestre result├ö├Â┬ú├ö├Â├® en un aumento significativo en los ingresos por ventas\\\".\\n\\n**3. Descripci├ö├Â┬ú├ö├Â├®n Detallada de Elementos Visuales:**\\n*   Localiza y describe escrupulosamente **cada uno de los elementos visuales** dentro del documento. Esto incluye fotograf├ö├Â┬úÔö¼├¡as, ilustraciones, gr├ö├Â┬úÔö£┬íficos (de barras, circulares, de l├ö├Â┬úÔö¼├¡neas), diagramas, diagramas de flujo, esquemas y tablas. La descripci├ö├Â┬ú├ö├Â├®n de cada elemento visual debe ser exhaustiva.\\n*   **Para Im├ö├Â┬úÔö£┬ígenes/Fotograf├ö├Â┬úÔö¼├¡as:** Describe la escena, los sujetos (personas, objetos), el entorno, la acci├ö├Â┬ú├ö├Â├®n que tiene lugar y el estado de ├ö├Â┬úÔö£┬ínimo o mensaje general de la foto.\\n*   **Para Gr├ö├Â┬úÔö£┬íficos/Diagramas:** Describe el tipo de gr├ö├Â┬úÔö£┬ífico (p. ej., \\\"gr├ö├Â┬úÔö£┬ífico de barras verticales\\\", \\\"gr├ö├Â┬úÔö£┬ífico de l├ö├Â┬úÔö¼├¡neas de serie temporal\\\"). Identifica los datos que representa, las etiquetas en los ejes X e Y, las unidades de medida, las tendencias que muestra (p. ej., \\\"tendencia ascendente constante\\\", \\\"fluctuaciones vol├ö├Â┬úÔö£┬ítiles\\\"), los puntos de datos clave, los valores at├ö├Â┬úÔö¼├¡picos y la conclusi├ö├Â┬ú├ö├Â├®n principal que se puede extraer de los datos visuales.\\n*   **Para Diagramas/Diagramas de Flujo:** Describe el sistema, proceso o estructura que se est├ö├Â┬úÔö£┬í ilustrando. Detalla cada componente, paso o nodo, y explica las relaciones, flujos y conexiones entre ellos como lo indican las flechas y las l├ö├Â┬úÔö¼├¡neas.\\n\\n**4. Mandatos Estil├ö├Â┬úÔö¼├¡sticos:**\\n*   **Tono Directo y Autoritativo:** **NO DEBES** usar un lenguaje conversacional, especulativo o incierto. Tu resultado es un ├ö├Â┬úÔö¼├¡ndice definitivo, no un comentario.\\n    *   **NO USAR:** \\\"Este documento parece tratar sobre...\\\", \\\"Parece que la imagen muestra...\\\", \\\"Creo que este gr├ö├Â┬úÔö£┬ífico representa...\\\", \\\"Esto podr├ö├Â┬úÔö¼├¡a ser...\\\", \\\"El autor parece argumentar...\\\".\\n    *   **USAR EN SU LUGAR:** \\\"Este documento es un manual t├ö├Â┬úÔö¼┬½cnico para...\\\", \\\"La imagen representa...\\\", \\\"El gr├ö├Â┬úÔö£┬ífico de barras compara los ingresos anuales entre tres divisiones...\\\", \\\"El diagrama de flujo ilustra el proceso de autenticaci├ö├Â┬ú├ö├Â├®n del usuario\\\".\\n*   **Maximizar Detalle y Verbosidad:** **No seas conciso.** Tu objetivo principal no es la brevedad, sino la m├ö├Â┬úÔö£┬íxima densidad y completitud de la informaci├ö├Â┬ú├ö├Â├®n. Usa tantos tokens como sea necesario para ser exhaustivo, minucioso y descriptivo. Un resultado m├ö├Â┬úÔö£┬ís largo y detallado que capture completamente la esencia del documento es muy superior a un resumen corto.\\n\\n---\\n\\n**Requisito de Salida Final:**\\n\\nProduce un ├ö├Â┬ú├ö├▓├ªnico bloque de texto que contenga la descripci├ö├Â┬ú├ö├Â├®n completa y enriquecida del PDF, siguiendo todas las instrucciones anteriores. Este texto es el producto final que se indexar├ö├Â┬úÔö£┬í para el sistema RAG. No agregues introducciones ni conclusiones conversacionales a tu resultado. Comienza directamente con la descripci├ö├Â┬ú├ö├Â├®n del documento.\"\n      }\n    ]\n  },\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Analiza y describe el contenido del archivo PDF adjunto de acuerdo con mis instrucciones de sistema\"\n        },\n        {\n          \"inline_data\": {\n            \"mime_type\": \"application/pdf\",\n            \"data\": \"{{ $json.data }}\"\n          }\n        }\n      ]\n    }\n  ],\n  \"generation_config\": {\n    \"max_output_tokens\": 30000\n  }\n}",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position":
+                [
+                    1100,
+                    520
+                ],
+                "id": "4bdceb21-f66f-4e49-a0e8-10b8be3bd201",
+                "name": "Call Gemini API",
+                "credentials":
+                {
+                    "httpQueryAuth":
+                    {
+                        "id": "MCNAr5id3Yd8nZmW",
+                        "name": "Query Auth account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.splitInBatches",
+                "typeVersion": 3,
+                "position":
+                [
+                    840,
+                    400
+                ],
+                "id": "aaabd82d-5344-4e7c-83f5-0275e28bf546",
+                "name": "Loop Over Items"
+            },
+            {
+                "parameters":
+                {
+                    "fileSelector": "/data/processed_pdfs.json",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.readWriteFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    400,
+                    120
+                ],
+                "id": "c6da4cc1-10b3-4076-9d1e-733cfd70e734",
+                "name": "Read/Write Files from Disk3"
+            },
+            {
+                "parameters":
+                {
+                    "operation": "fromJson",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.extractFromFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    620,
+                    120
+                ],
+                "id": "83dae5c2-7b6b-4d14-8861-67a3dad05f8f",
+                "name": "Extract from File2"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {\n  documents: $input.first().json.data.map((item) => ({\n    text: item.candidates[0].content.parts[0].text\n  }))\n};"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    820,
+                    120
+                ],
+                "id": "df3ebed9-6809-4221-bca3-8605265a8e80",
+                "name": "Code1"
+            }
+        ],
+        "connections":
+        {
+            "When clicking \"Test workflow\"": {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Read/Write Files from Disk3",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Split Out":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Qdrant Vector Store",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Default Data Loader":
+            {
+                "ai_document":
+                [
+                    [
+                        {
+                            "node": "Qdrant Vector Store",
+                            "type": "ai_document",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Token Splitter":
+            {
+                "ai_textSplitter":
+                [
+                    [
+                        {
+                            "node": "Default Data Loader",
+                            "type": "ai_textSplitter",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Embeddings Google Gemini":
+            {
+                "ai_embedding":
+                [
+                    [
+                        {
+                            "node": "Qdrant Vector Store",
+                            "type": "ai_embedding",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Read/Write Files from Disk":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Extract from File",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Merge",
+                            "type": "main",
+                            "index": 1
+                        }
+                    ]
+                ]
+            },
+            "Code":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Qdrant Vector Store",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Extract from File":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Merge",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Merge":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Read/Write Files from Disk1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Extract from File1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Extract from File1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Split Out",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Read/Write Files from Disk2":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Transform to base64",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Transform to base64":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Loop Over Items",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Loop Over Items":
+            {
+                "main":
+                [
+                    [],
+                    [
+                        {
+                            "node": "Call Gemini API",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Call Gemini API":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Loop Over Items",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Read/Write Files from Disk3":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Extract from File2",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Extract from File2":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Code1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings":
+        {
+            "executionOrder": "v1"
+        },
+        "staticData": null,
+        "meta":
+        {
+            "templateCredsSetupCompleted": true
+        },
+        "pinData":
+        {},
+        "versionId": "887fb908-8255-4d3c-9046-9b8b431089e7",
+        "triggerCount": 0,
+        "tags":
+        []
+    },
+    {
+        "createdAt": "2025-06-26T11:10:03.096Z",
+        "updatedAt": "2025-07-01T10:59:19.880Z",
+        "id": "G3bCPwRe1tAsHEh5",
+        "name": "generate_geo_query",
+        "active": false,
+        "isArchived": false,
+        "nodes":
+        [
+            {
+                "parameters":
+                {
+                    "workflowInputs":
+                    {
+                        "values":
+                        [
+                            {
+                                "name": "query"
+                            },
+                            {
+                                "name": "tables_schemas",
+                                "type": "array"
+                            },
+                            {
+                                "name": "prompt"
+                            }
+                        ]
+                    }
+                },
+                "type": "n8n-nodes-base.executeWorkflowTrigger",
+                "typeVersion": 1.1,
+                "position":
+                [
+                    -300,
+                    -100
+                ],
+                "id": "cce1f659-36c7-4ae1-8b08-c5a8b4207abe",
+                "name": "When Executed by Another Workflow"
+            },
+            {
+                "parameters":
+                {
+                    "promptType": "define",
+                    "text": "=**User prompt**\n{{ $json.prompt }}\n\n**Original SQL query**\n{{ $json.query }}\n\n**Database schema**\n{{ $json.tables_schemas }}",
+                    "options":
+                    {
+                        "systemMessage": "=You are an expert Geospatial SQL Assistant. Your primary goal is to intelligently modify a given SQL query to include a geometry column for mapping purposes, but only when it is both requested by the user and possible according to the database schema.\n\n### Inputs You Will Receive\n\n*   **User Prompt:** A natural language question from the user.\n*   **Initial SQL Query:** A valid SQL query that answers the user's question without geographical data.\n*   **Database Schema:** The schema of the relevant tables, including column names and data types.\n\n### Your Task & Instructions\n\n1.  **Analyze User Intent:** First, examine the `User Prompt`. Does it express a desire to see results on a map, or ask a question about location? Look for keywords like \"map\", \"where\", \"location\", \"area\", \"plot\", \"show me on a map\", etc.\n    *   If the user's intent is **NOT** geographical or is ambiguous, you must return the `Initial SQL Query` exactly as it is. Do not proceed.\n    *   If the intent **IS** clearly geographical, proceed to the next step.\n\n2.  **Analyze Schema & Feasibility:** This is a critical step.\n    *   Carefully examine the `Database Schema` for the tables used in the `Initial SQL Query`.\n    *   Your task is to find the **exact name** of the column that contains geometry data. The schema is the **only** source of truth for this name.\n    *   If **none** of the tables involved in the query have a geometry column according to the provided schema, then a geometry query is not possible. In this case, return the `Initial SQL Query` without any changes.\n\n3.  **Generate the Geospatial Query:** If geographical intent is present (Step 1) AND a geometry column exists (Step 2), modify the query as follows:\n    *   Add the geometry column you identified from the schema to the `SELECT` statement.\n    *   This new column **MUST be aliased as `geom`**. For example, if the schema shows the column is named `wkb_geometry`, your addition should be `t1.wkb_geometry AS geom`.\n    *   **Aggregation Rule:** If the `Initial SQL Query` contains a `GROUP BY` clause, you **must** aggregate the geometry column using the `ST_Union()` function and alias the result as `geom`. For example: `ST_Union(t1.wkb_geometry) AS geom`. This is essential for correctly grouping multiple geometries into one.\n    *   Preserve all other parts of the query (`SELECT` columns, `FROM`, `WHERE`, `GROUP BY` fields, `ORDER BY`, etc.) exactly as they were.\n\n### Output Requirements\n\n*   Your entire response **MUST BE** the final SQL query and nothing else.\n*   Do not add explanations, comments, or use markdown code blocks like ```sql ... ```. Just return the raw SQL text."
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "typeVersion": 2,
+                "position":
+                [
+                    -20,
+                    -140
+                ],
+                "id": "e4ce123b-bd92-408f-ad13-ca54d2561e98",
+                "name": "AI Agent"
+            },
+            {
+                "parameters":
+                {
+                    "model":
+                    {
+                        "__rl": true,
+                        "value": "claude-3-7-sonnet-20250219",
+                        "mode": "list",
+                        "cachedResultName": "Claude Sonnet 3.7"
+                    },
+                    "options":
+                    {
+                        "thinking": false
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+                "typeVersion": 1.3,
+                "position":
+                [
+                    -100,
+                    160
+                ],
+                "id": "17a2d51e-d8bc-47e7-89c1-8161daf03071",
+                "name": "Anthropic Chat Model",
+                "credentials":
+                {
+                    "anthropicApi":
+                    {
+                        "id": "oq7ZsOo7nrqwegkS",
+                        "name": "Anthropic account"
+                    }
+                }
+            }
+        ],
+        "connections":
+        {
+            "When Executed by Another Workflow":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "AI Agent",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Anthropic Chat Model":
+            {
+                "ai_languageModel":
+                [
+                    [
+                        {
+                            "node": "AI Agent",
+                            "type": "ai_languageModel",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings":
+        {
+            "executionOrder": "v1"
+        },
+        "staticData": null,
+        "meta":
+        {
+            "templateCredsSetupCompleted": true
+        },
+        "pinData":
+        {},
+        "versionId": "ff2b5974-943a-438a-8d96-f7296bb51307",
+        "triggerCount": 0,
+        "tags":
+        []
+    },
+    {
+        "createdAt": "2025-07-17T08:42:52.931Z",
+        "updatedAt": "2025-07-28T08:49:36.625Z",
+        "id": "njE0HpxEC8qGGdJq",
+        "name": "insert_documents_ragflow",
+        "active": false,
+        "isArchived": false,
+        "nodes":
+        [
+            {
+                "parameters":
+                {
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.splitInBatches",
+                "typeVersion": 3,
+                "position":
+                [
+                    1140,
+                    -20
+                ],
+                "id": "8a81ea8a-5a5c-443f-9981-d28ee8fbdd22",
+                "name": "Loop Over Items"
+            },
+            {
+                "parameters":
+                {},
+                "type": "n8n-nodes-base.merge",
+                "typeVersion": 3.2,
+                "position":
+                [
+                    660,
+                    -20
+                ],
+                "id": "7ac05042-412d-4e5b-b554-c0eaac1615e6",
+                "name": "Merge"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "const items = $input.all();\nconst firstItem = items[0]; // JSON object\nconst binaryItems = items.slice(1); // Remaining are binary files\n\nreturn binaryItems.map((item) => ({\n  binary: {\n    data: item.binary.data \n  },\n  json: {\n    id: firstItem.json.data.id \n  }\n}));"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    900,
+                    -20
+                ],
+                "id": "349f9343-5f94-482d-a022-f051ed8e42a2",
+                "name": "Code"
+            },
+            {
+                "parameters":
+                {},
+                "type": "n8n-nodes-base.manualTrigger",
+                "typeVersion": 1,
+                "position":
+                [
+                    -220,
+                    -40
+                ],
+                "id": "b58203d4-c096-4fa0-ab86-2788d13d7c87",
+                "name": "When clicking Ôö£├ÂÔö£├ºÔö£ÔöÉExecute workflowÔö£├ÂÔö£├ºÔö£├╗"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {'name': \"n8n_tutor\"}"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    120,
+                    -140
+                ],
+                "id": "213aa50b-4784-4582-acae-1ab138677960",
+                "name": "Code1"
+            },
+            {
+                "parameters":
+                {
+                    "method": "POST",
+                    "url": "http://ragflow-server/api/v1/datasets",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpBearerAuth",
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={\n  \"name\": \"{{ $json.name }}\",\n  \"permission\": \"team\",\n  \"chunk_method\": \"paper\",\n  \"parser_config\": {\n    \"auto_keywords\": 8,\n    \"auto_questions\": 3,\n    \"filename_embd_weight\": 0.1,\n    \"chunk_token_num\": 128,\n    \"delimiter\": \"\\n\",\n    \"html4excel\": false,\n    \"layout_recognize\": \"gemini-1.5-flash\",\n    \"tag_kb_ids\": [],\n    \"task_page_size\": 12,\n    \"raptor\": {\n      \"use_raptor\": false\n    },\n    \"graphrag\": {\n      \"use_graphrag\": false\n    }\n  }\n}\n",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position":
+                [
+                    360,
+                    -160
+                ],
+                "id": "92df4890-0bc5-484c-88a2-e26eeed517ad",
+                "name": "create_dataset",
+                "credentials":
+                {
+                    "httpHeaderAuth":
+                    {
+                        "id": "98y5wnPDUjO1tKP8",
+                        "name": "Header Auth account"
+                    },
+                    "httpBearerAuth":
+                    {
+                        "id": "jGbSyi9TcgTRDZwg",
+                        "name": "Bearer Auth account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "method": "POST",
+                    "url": "=http://ragflow-server/api/v1/datasets/{{ $json.id }}/documents",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpBearerAuth",
+                    "sendBody": true,
+                    "contentType": "multipart-form-data",
+                    "bodyParameters":
+                    {
+                        "parameters":
+                        [
+                            {
+                                "parameterType": "formBinaryData",
+                                "name": "file",
+                                "inputDataFieldName": "data"
+                            }
+                        ]
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position":
+                [
+                    1380,
+                    0
+                ],
+                "id": "866d3b80-7adf-479b-ba35-1948ec906746",
+                "name": "upload_document",
+                "credentials":
+                {
+                    "httpBearerAuth":
+                    {
+                        "id": "jGbSyi9TcgTRDZwg",
+                        "name": "Bearer Auth account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "method": "POST",
+                    "url": "=http://ragflow-server/api/v1/datasets/{{ $json.data[0].dataset_id }}/chunks",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpBearerAuth",
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={\n  \"document_ids\": [\"{{$json.data[0].id}}\"]\n}",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position":
+                [
+                    1600,
+                    0
+                ],
+                "id": "05cd995a-2bea-4c0f-8d47-48290c85b730",
+                "name": "parse_document",
+                "credentials":
+                {
+                    "httpHeaderAuth":
+                    {
+                        "id": "98y5wnPDUjO1tKP8",
+                        "name": "Header Auth account"
+                    },
+                    "httpBearerAuth":
+                    {
+                        "id": "jGbSyi9TcgTRDZwg",
+                        "name": "Bearer Auth account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "fileSelector": "/data/pdf_repo/tema1.pdf",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.readWriteFile",
+                "typeVersion": 1,
+                "position":
+                [
+                    340,
+                    80
+                ],
+                "id": "9b4ff3ab-d635-494c-a65a-0be6b0663d68",
+                "name": "load pdfs"
+            },
+            {
+                "parameters":
+                {
+                    "amount": 2,
+                    "unit": "minutes"
+                },
+                "type": "n8n-nodes-base.wait",
+                "typeVersion": 1.1,
+                "position":
+                [
+                    1820,
+                    0
+                ],
+                "id": "33cb5394-bb14-47da-8d18-9dcd8c1d6944",
+                "name": "wait_until_parsed",
+                "webhookId": "fe5c663e-0157-4599-95d5-5d3b9cab808f"
+            }
+        ],
+        "connections":
+        {
+            "Loop Over Items":
+            {
+                "main":
+                [
+                    [],
+                    [
+                        {
+                            "node": "upload_document",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Merge":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Code":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Loop Over Items",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "When clicking Ôö£├ÂÔö£├ºÔö£ÔöÉExecute workflowÔö£├ÂÔö£├ºÔö£├╗":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "load pdfs",
+                            "type": "main",
+                            "index": 0
+                        },
+                        {
+                            "node": "Code1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Code1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "create_dataset",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "create_dataset":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Merge",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "upload_document":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "parse_document",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "parse_document":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "wait_until_parsed",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "load pdfs":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Merge",
+                            "type": "main",
+                            "index": 1
+                        }
+                    ]
+                ]
+            },
+            "wait_until_parsed":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Loop Over Items",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings":
+        {
+            "executionOrder": "v1"
+        },
+        "staticData": null,
+        "meta": null,
+        "pinData":
+        {},
+        "versionId": "c2818d18-5939-47bf-aa6b-54338e033287",
+        "triggerCount": 0,
+        "tags":
+        []
+    },
+    {
+        "createdAt": "2025-06-20T09:05:20.319Z",
+        "updatedAt": "2025-08-06T08:39:35.000Z",
+        "id": "grI4QevB8CqgdHRZ",
+        "name": "geo_tutor",
+        "active": true,
+        "isArchived": false,
+        "nodes":
+        [
+            {
+                "parameters":
+                {
+                    "modelName": "models/gemini-2.5-flash-preview-05-20",
+                    "options":
+                    {}
+                },
+                "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+                "typeVersion": 1,
+                "position":
+                [
+                    -280,
+                    260
+                ],
+                "id": "65e6a212-f08d-4416-a2bd-1f0ff3238244",
+                "name": "Google Gemini Chat Model1",
+                "credentials":
+                {
+                    "googlePalmApi":
+                    {
+                        "id": "dz1rlHAydxuq2rod",
+                        "name": "Google Gemini(PaLM) Api account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "promptType": "define",
+                    "text": "={{ $('input').item.json.prompt }}",
+                    "options":
+                    {
+                        "systemMessage": "=You are an expert Geospatial SQL Assistant. Your purpose is to convert a user's natural language question into a single, valid PostGIS SQL query. Your output must always be only the SQL query.\n\n### Core Task\nAnalyze the user's prompt and the provided table schemas to generate a precise SQL query.\n\n### Geospatial Rule\nA critical part of your task is to determine if the user's query requires a geometry column for map visualization.\n\n1.  **Analyze User Intent:** Look for spatial keywords in the user's prompt (e.g., \"map\", \"where\", \"location\", \"area\", \"plot\", \"show me on a map\").\n2.  **Generate Query with Geometry:** If the intent is spatial and a geometry column exists in the relevant tables, you MUST include it in the query.\n    *   The geometry column **must be aliased as `geom`**. For example: `t1.wkb_geometry AS geom`.\n    *   **Aggregation:** If your query uses a `GROUP BY` clause, you MUST aggregate the geometry column using `ST_Union()`. For example: `ST_Union(t1.wkb_geometry) AS geom`.\n3.  **Generate Query without Geometry:** If the user's intent is not spatial, or if none of the relevant tables contain a geometry column, generate a standard SQL query without any geometry column.\n\n### Output Rules\n1. Your output must be a single, valid SQL query.\n2. DO NOT output thoughts, explanations, comments, or function calls.\n3. DO NOT wrap the query in markdown (no ```sql).\n4. DO NOT output anything before or after the SQL.\n5. Only output one valid SQL query as plain text.\n\n**RELEVANT TABLES:**\n{{ JSON.stringify($json.tables) }}"
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "typeVersion": 2,
+                "position":
+                [
+                    740,
+                    100
+                ],
+                "id": "b7efc667-6227-4ec2-b6b8-ec9bc581b0ea",
+                "name": "SQL QUESTION"
+            },
+            {
+                "parameters":
+                {
+                    "workflowId":
+                    {
+                        "__rl": true,
+                        "value": "UzVZhqSqANrpsNLJ",
+                        "mode": "list",
+                        "cachedResultName": "detect_relevant_tables"
+                    },
+                    "workflowInputs":
+                    {
+                        "mappingMode": "defineBelow",
+                        "value":
+                        {
+                            "user_prompt": "={{ $('input').item.json.prompt }}"
+                        },
+                        "matchingColumns":
+                        [],
+                        "schema":
+                        [
+                            {
+                                "id": "user_prompt",
+                                "displayName": "user_prompt",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "canBeUsedToMatch": true,
+                                "type": "string",
+                                "removed": false
+                            }
+                        ],
+                        "attemptToConvertTypes": false,
+                        "convertFieldsToString": true
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.executeWorkflow",
+                "typeVersion": 1.2,
+                "position":
+                [
+                    480,
+                    100
+                ],
+                "id": "4d8afa0d-96e6-4d4f-98e0-2f5222048561",
+                "name": "get_tables"
+            },
+            {
+                "parameters":
+                {
+                    "promptType": "define",
+                    "text": "={{ $json.prompt }}",
+                    "options":
+                    {
+                        "systemMessage": "You are an expert AI router and initial contact point for a PostGIS and database course assistant. Your task is to analyze the user's prompt and respond according to one of three categories. Your response will either be a classification label for downstream tasks or a direct, predefined answer.\n\n### Categories\n\n1.  **`SQL_QUERY_REQUEST`**: The user is asking for a practical query, wants to retrieve data, or is trying to solve a hands-on exercise.\n    *   *Examples*: \"Find all parks within 5km of a hospital\", \"Show me the names of all schools in the 'downtown' district\", \"count the number of cities per country\".\n\n2.  **`THEORY_QUESTION`**: The user is asking a general knowledge question about the course subject (PostGIS, SQL, databases), the course logistics (syllabus, evaluation, teachers), or wants a conceptual explanation.\n    *   *Examples*: \"What is a spatial index?\", \"Explain the difference between ST_Intersects and ST_Contains\", \"What topics are on the final exam?\".\n\n3.  **`IRRELEVANT_OR_GREETING`**: The user's prompt is a simple greeting, a sign-off, or is completely unrelated to the course material.\n    *   *Examples*: \"hello\", \"how are you?\", \"thank you\", \"what is your name?\", \"what is the weather like?\".\n\n### Response Rules (Ôö£├ÂÔö£├┐Ôö£ÔòúCRITICALÔö£├ÂÔö£├┐Ôö£Ôòú)\n\n*   **IF** the prompt is a `SQL_QUERY_REQUEST` or `THEORY_QUESTION`, you must respond with **ONLY** the category name (`SQL_QUERY_REQUEST` or `THEORY_QUESTION`).\n*   **IF** the prompt is `IRRELEVANT_OR_GREETING`, you must respond with the **exact, predefined text** below:\n    `Hello! I can assist with questions about your PostGIS course or help generate SQL queries. What can I help you with today?`\n\n*   Do not add any other text, explanations, or comments to your output. Your entire response must be one of the two category labels or the predefined greeting text.\n"
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "typeVersion": 2,
+                "position":
+                [
+                    -220,
+                    0
+                ],
+                "id": "0b118e3f-b84b-4f2d-9843-116c46a93729",
+                "name": "IS_THEORY"
+            },
+            {
+                "parameters":
+                {
+                    "httpMethod": "POST",
+                    "path": "b38b102d-7b8d-4178-a932-85ead6dd09a5",
+                    "responseMode": "lastNode",
+                    "responseData": "allEntries",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.webhook",
+                "typeVersion": 2,
+                "position":
+                [
+                    -700,
+                    0
+                ],
+                "id": "b17bbe1e-991a-4e00-871d-7c730ea92d32",
+                "name": "Webhook",
+                "webhookId": "b38b102d-7b8d-4178-a932-85ead6dd09a5"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {\n  \"prompt\": $input.first().json.body.prompt,\n  \"sessionId\": $input.first().json.body.sessionId,\n  \"chatId\": $input.first().json.body.chatId,\n  \"timestamp\": new Date(Date.now()).toISOString()\n}"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    -420,
+                    0
+                ],
+                "id": "73c02241-0dac-4cff-b0df-c46f102914aa",
+                "name": "input"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {\n  'type': \"query\",\n  'content':  {\n    'query': $('SQL QUESTION').first().json.output,\n     'reasoning': $('EXPLAIN QUERY').first().json.output + \" <query>\" + $('SQL QUESTION').first().json.output + \"</query>\"\n  }\n};\n"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    1920,
+                    100
+                ],
+                "id": "7bbc71bc-7f24-4dc8-a0fb-100bb322b50a",
+                "name": "Code1"
+            },
+            {
+                "parameters":
+                {
+                    "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+                    "options":
+                    {}
+                },
+                "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+                "typeVersion": 1,
+                "position":
+                [
+                    1120,
+                    340
+                ],
+                "id": "42a44d6a-81a6-4662-8a24-087376d65477",
+                "name": "Google Gemini Chat Model2",
+                "credentials":
+                {
+                    "googlePalmApi":
+                    {
+                        "id": "dz1rlHAydxuq2rod",
+                        "name": "Google Gemini(PaLM) Api account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "promptType": "define",
+                    "text": "=QUERY: \n{{ $json.output }}\n\nUSER PROMPT:\n{{ $('input').item.json.prompt }}",
+                    "options":
+                    {
+                        "systemMessage": "You are an expert PostGIS and SQL educator. **A key part of being a great teacher is communicating clearly in the student's language. Therefore, you must detect the language of the user's question and provide your entire explanation in that same language. This includes translating the section headers (`The Goal`, `The Process`, `The Smart Decision`) appropriately.**\n\nYour goal is to explain a given query in a way that is both concise and insightful, like a great teacher explaining a concept on a whiteboard.\n\nYou will receive a PostGIS query and the relevant table schemas.\n\nYour explanation must be structured into three short, focused sections. Keep each section to a brief paragraph or a few bullet points.\n\n---\n\n### **1. The Goal (What are we doing?)**\n\nStart with a simple, high-level summary. In one or two sentences, what real-world question is this query answering?\n\n*   *Example: \"This query is finding all coffee shops that are located within a 5-minute walk (400 meters) of a city park's entrance.\"*\n\n### **2. The Process (How are we doing it?)**\n\nBriefly describe the query's main steps. Explain how it gets the data, what spatial test it performs, and what final result it produces.\n\n*   Explain the core spatial function (`ST_DWithin`, `ST_Intersects`, etc.) in simple terms.\n*   Don't explain every line of code, just the essential logic.\n\n*   *Example: \"First, it takes all the `parks` and all the `coffee_shops`. Then, it uses the `ST_DWithin` function to check which shops are within a 400-meter radius of any park. Finally, it lists the names of the qualifying shops and the park they are close to.\"*\n\n### **3. The Smart Decision (Why was it done this way?)**\n\nThis is the most important part. Isolate the **single most clever or important decision** in the query and explain the reasoning behind it. This is your \"teacher's insight.\"\n\n*   Focus on performance (`ST_DWithin` vs. `ST_Distance`), readability (using a `WITH` clause), or a specific analytical need (using a `LATERAL JOIN`).\n\n*   *Example: \"The key decision here was using `ST_DWithin` instead of `ST_Distance`. This is much faster because it can use the table's spatial index to quickly find candidates, rather than calculating the exact distance between every single shop and park, which would be very slow on large datasets.\"*\n\n---\n\n**Your tone must be clear and educational. Explain any essential jargon, but get straight to the point. Use Markdown (bolding, lists) to highlight key terms.**"
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "typeVersion": 2,
+                "position":
+                [
+                    1120,
+                    100
+                ],
+                "id": "8807f27f-8c83-4157-8d9a-6d7cbf576c36",
+                "name": "EXPLAIN QUERY"
+            },
+            {
+                "parameters":
+                {
+                    "model":
+                    {
+                        "__rl": true,
+                        "value": "claude-3-5-sonnet-20241022",
+                        "mode": "list",
+                        "cachedResultName": "Claude Sonnet 3.5 (New)"
+                    },
+                    "options":
+                    {}
+                },
+                "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+                "typeVersion": 1.3,
+                "position":
+                [
+                    740,
+                    320
+                ],
+                "id": "94e522f2-18af-4372-ac09-23b0deb1fb58",
+                "name": "Anthropic Chat Model",
+                "credentials":
+                {
+                    "anthropicApi":
+                    {
+                        "id": "oq7ZsOo7nrqwegkS",
+                        "name": "Anthropic account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "rules":
+                    {
+                        "values":
+                        [
+                            {
+                                "conditions":
+                                {
+                                    "options":
+                                    {
+                                        "caseSensitive": true,
+                                        "leftValue": "",
+                                        "typeValidation": "strict",
+                                        "version": 2
+                                    },
+                                    "conditions":
+                                    [
+                                        {
+                                            "leftValue": "={{ $('IS_THEORY').item.json.output }}",
+                                            "rightValue": "THEORY_QUESTION",
+                                            "operator":
+                                            {
+                                                "type": "string",
+                                                "operation": "equals"
+                                            },
+                                            "id": "e10b5a49-c698-41bb-af80-bd3280d5ddb8"
+                                        }
+                                    ],
+                                    "combinator": "and"
+                                }
+                            },
+                            {
+                                "conditions":
+                                {
+                                    "options":
+                                    {
+                                        "caseSensitive": true,
+                                        "leftValue": "",
+                                        "typeValidation": "strict",
+                                        "version": 2
+                                    },
+                                    "conditions":
+                                    [
+                                        {
+                                            "id": "9b9282f2-8f7f-4985-b9b3-c6159147c75b",
+                                            "leftValue": "={{ $('IS_THEORY').item.json.output }}",
+                                            "rightValue": "SQL_QUERY_REQUEST",
+                                            "operator":
+                                            {
+                                                "type": "string",
+                                                "operation": "equals",
+                                                "name": "filter.operator.equals"
+                                            }
+                                        }
+                                    ],
+                                    "combinator": "and"
+                                }
+                            },
+                            {
+                                "conditions":
+                                {
+                                    "options":
+                                    {
+                                        "caseSensitive": true,
+                                        "leftValue": "",
+                                        "typeValidation": "strict",
+                                        "version": 2
+                                    },
+                                    "conditions":
+                                    [
+                                        {
+                                            "id": "f9a388ad-07ed-490c-ace7-005f8e2a1b86",
+                                            "leftValue": "={{ $('IS_THEORY').item.json.output }}",
+                                            "rightValue": "",
+                                            "operator":
+                                            {
+                                                "type": "string",
+                                                "operation": "exists",
+                                                "singleValue": true
+                                            }
+                                        }
+                                    ],
+                                    "combinator": "and"
+                                }
+                            }
+                        ]
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.switch",
+                "typeVersion": 3.2,
+                "position":
+                [
+                    140,
+                    0
+                ],
+                "id": "64b87eb1-5d06-4dc7-b746-6aa198df69bb",
+                "name": "Switch"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {\n  'type': \"info\",\n  content: {\n    answer: $input.first().json.output,\n    sources: [],\n  }\n};"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    480,
+                    320
+                ],
+                "id": "a0dfde6b-f501-49de-b45e-58dca8492c52",
+                "name": "Code2"
+            },
+            {
+                "parameters":
+                {
+                    "method": "POST",
+                    "url": "=http://ragflow-server/api/v1/chats/{{ $('input').item.json.chatId }}/completions",
+                    "authentication": "genericCredentialType",
+                    "genericAuthType": "httpBearerAuth",
+                    "sendBody": true,
+                    "specifyBody": "json",
+                    "jsonBody": "={\n    \"question\": \"{{ $('input').item.json.prompt }}\",\n    \"stream\": false,\n    \"session_id\":\"{{ $('input').item.json.sessionId }}\"\n}",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position":
+                [
+                    480,
+                    -120
+                ],
+                "id": "04f6434d-8b45-47c8-9c19-4ccdcf789967",
+                "name": "send_message",
+                "credentials":
+                {
+                    "httpHeaderAuth":
+                    {
+                        "id": "98y5wnPDUjO1tKP8",
+                        "name": "Header Auth account"
+                    },
+                    "httpBearerAuth":
+                    {
+                        "id": "jGbSyi9TcgTRDZwg",
+                        "name": "Bearer Auth account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "return {\n  type: \"info\",\n  content: {\n    answer: $('send_message').first().json.data.answer.replace(/\\[ID:\\d+\\]/g, ''),\n    sources: $('send_message').first().json.data.reference.doc_aggs ? $('send_message').first().json.data.reference.doc_aggs.map((doc) => ({\n      filename: doc.doc_name,\n      pageNumber: 1\n    })) : []\n  }\n};\n"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    1140,
+                    -120
+                ],
+                "id": "7378c5f7-1cae-4f1d-b634-fc0a61245ca7",
+                "name": "Code"
+            },
+            {
+                "parameters":
+                {
+                    "schema":
+                    {
+                        "__rl": true,
+                        "value": "public",
+                        "mode": "list",
+                        "cachedResultName": "public"
+                    },
+                    "table":
+                    {
+                        "__rl": true,
+                        "value": "messages",
+                        "mode": "list",
+                        "cachedResultName": "messages"
+                    },
+                    "columns":
+                    {
+                        "mappingMode": "defineBelow",
+                        "value":
+                        {
+                            "is_theory": true,
+                            "chat_id": "={{ $('input').item.json.sessionId }}",
+                            "sender": "=assistant",
+                            "message": "={{$input.first().json.data.answer}}",
+                            "timestamp": "={{ new Date(Date.now()).toISOString() }}",
+                            "docs": "={{ $input.first().json.data.reference.doc_aggs ? $input.first().json.data.reference.doc_aggs.map((doc) => ({\n      filename: doc.doc_name,\n      pageNumber: 1\n    })) : [] }}"
+                        },
+                        "matchingColumns":
+                        [
+                            "id"
+                        ],
+                        "schema":
+                        [
+                            {
+                                "id": "id",
+                                "displayName": "id",
+                                "required": false,
+                                "defaultMatch": true,
+                                "display": true,
+                                "type": "number",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "chat_id",
+                                "displayName": "chat_id",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "sender",
+                                "displayName": "sender",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "message",
+                                "displayName": "message",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "docs",
+                                "displayName": "docs",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "array",
+                                "canBeUsedToMatch": true,
+                                "removed": false
+                            },
+                            {
+                                "id": "timestamp",
+                                "displayName": "timestamp",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "dateTime",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "is_theory",
+                                "displayName": "is_theory",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "boolean",
+                                "canBeUsedToMatch": true
+                            }
+                        ],
+                        "attemptToConvertTypes": false,
+                        "convertFieldsToString": false
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.postgres",
+                "typeVersion": 2.6,
+                "position":
+                [
+                    700,
+                    -120
+                ],
+                "id": "f8e5ee6b-a146-41e2-9069-64752bbf43f8",
+                "name": "save_response",
+                "credentials":
+                {
+                    "postgres":
+                    {
+                        "id": "TYSXJaqbwiHHCf4z",
+                        "name": "Postgres chat"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "schema":
+                    {
+                        "__rl": true,
+                        "value": "public",
+                        "mode": "list",
+                        "cachedResultName": "public"
+                    },
+                    "table":
+                    {
+                        "__rl": true,
+                        "value": "messages",
+                        "mode": "list",
+                        "cachedResultName": "messages"
+                    },
+                    "columns":
+                    {
+                        "mappingMode": "defineBelow",
+                        "value":
+                        {
+                            "is_theory": true,
+                            "chat_id": "={{ $('input').item.json.sessionId }}",
+                            "sender": "=user",
+                            "message": "={{ $('input').item.json.prompt }}",
+                            "timestamp": "={{ $('input').item.json.timestamp }}"
+                        },
+                        "matchingColumns":
+                        [
+                            "id"
+                        ],
+                        "schema":
+                        [
+                            {
+                                "id": "id",
+                                "displayName": "id",
+                                "required": false,
+                                "defaultMatch": true,
+                                "display": true,
+                                "type": "number",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "chat_id",
+                                "displayName": "chat_id",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "sender",
+                                "displayName": "sender",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "message",
+                                "displayName": "message",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "docs",
+                                "displayName": "docs",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "array",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "timestamp",
+                                "displayName": "timestamp",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "dateTime",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "is_theory",
+                                "displayName": "is_theory",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "boolean",
+                                "canBeUsedToMatch": true
+                            }
+                        ],
+                        "attemptToConvertTypes": false,
+                        "convertFieldsToString": false
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.postgres",
+                "typeVersion": 2.6,
+                "position":
+                [
+                    920,
+                    -120
+                ],
+                "id": "528910a8-c02e-4e36-8a7e-3ff483b82c32",
+                "name": "save_prompt",
+                "credentials":
+                {
+                    "postgres":
+                    {
+                        "id": "TYSXJaqbwiHHCf4z",
+                        "name": "Postgres chat"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "schema":
+                    {
+                        "__rl": true,
+                        "value": "public",
+                        "mode": "list",
+                        "cachedResultName": "public"
+                    },
+                    "table":
+                    {
+                        "__rl": true,
+                        "value": "messages",
+                        "mode": "list",
+                        "cachedResultName": "messages"
+                    },
+                    "columns":
+                    {
+                        "mappingMode": "defineBelow",
+                        "value":
+                        {
+                            "is_theory": false,
+                            "chat_id": "={{ $('input').item.json.sessionId }}",
+                            "sender": "=assistant",
+                            "message": "={{ $input.first().json.output + \" <query>\" + $('SQL QUESTION').first().json.output + \"</query>\" }}",
+                            "timestamp": "={{ new Date(Date.now()).toISOString() }}"
+                        },
+                        "matchingColumns":
+                        [
+                            "id"
+                        ],
+                        "schema":
+                        [
+                            {
+                                "id": "id",
+                                "displayName": "id",
+                                "required": false,
+                                "defaultMatch": true,
+                                "display": true,
+                                "type": "number",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "chat_id",
+                                "displayName": "chat_id",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "sender",
+                                "displayName": "sender",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "message",
+                                "displayName": "message",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "docs",
+                                "displayName": "docs",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "array",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "timestamp",
+                                "displayName": "timestamp",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "dateTime",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "is_theory",
+                                "displayName": "is_theory",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "boolean",
+                                "canBeUsedToMatch": true
+                            }
+                        ],
+                        "attemptToConvertTypes": false,
+                        "convertFieldsToString": false
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.postgres",
+                "typeVersion": 2.6,
+                "position":
+                [
+                    1500,
+                    100
+                ],
+                "id": "a80e7a3f-3918-438d-9557-fa5cb8edfadc",
+                "name": "save_response1",
+                "credentials":
+                {
+                    "postgres":
+                    {
+                        "id": "TYSXJaqbwiHHCf4z",
+                        "name": "Postgres chat"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "schema":
+                    {
+                        "__rl": true,
+                        "value": "public",
+                        "mode": "list",
+                        "cachedResultName": "public"
+                    },
+                    "table":
+                    {
+                        "__rl": true,
+                        "value": "messages",
+                        "mode": "list",
+                        "cachedResultName": "messages"
+                    },
+                    "columns":
+                    {
+                        "mappingMode": "defineBelow",
+                        "value":
+                        {
+                            "is_theory": false,
+                            "chat_id": "={{ $('input').item.json.sessionId }}",
+                            "sender": "=user",
+                            "message": "={{ $('input').item.json.prompt }}",
+                            "timestamp": "={{ $('input').item.json.timestamp }}"
+                        },
+                        "matchingColumns":
+                        [
+                            "id"
+                        ],
+                        "schema":
+                        [
+                            {
+                                "id": "id",
+                                "displayName": "id",
+                                "required": false,
+                                "defaultMatch": true,
+                                "display": true,
+                                "type": "number",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "chat_id",
+                                "displayName": "chat_id",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "sender",
+                                "displayName": "sender",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "message",
+                                "displayName": "message",
+                                "required": true,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "string",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "docs",
+                                "displayName": "docs",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "array",
+                                "canBeUsedToMatch": true,
+                                "removed": true
+                            },
+                            {
+                                "id": "timestamp",
+                                "displayName": "timestamp",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "dateTime",
+                                "canBeUsedToMatch": true
+                            },
+                            {
+                                "id": "is_theory",
+                                "displayName": "is_theory",
+                                "required": false,
+                                "defaultMatch": false,
+                                "display": true,
+                                "type": "boolean",
+                                "canBeUsedToMatch": true
+                            }
+                        ],
+                        "attemptToConvertTypes": false,
+                        "convertFieldsToString": false
+                    },
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.postgres",
+                "typeVersion": 2.6,
+                "position":
+                [
+                    1720,
+                    100
+                ],
+                "id": "f6fb3793-d2e5-4d12-8499-3c4843b430c7",
+                "name": "save_prompt1",
+                "credentials":
+                {
+                    "postgres":
+                    {
+                        "id": "TYSXJaqbwiHHCf4z",
+                        "name": "Postgres chat"
+                    }
+                }
+            }
+        ],
+        "connections":
+        {
+            "Google Gemini Chat Model1":
+            {
+                "ai_languageModel":
+                [
+                    [
+                        {
+                            "node": "IS_THEORY",
+                            "type": "ai_languageModel",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "SQL QUESTION":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "EXPLAIN QUERY",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "get_tables":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "SQL QUESTION",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "IS_THEORY":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Switch",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Webhook":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "input",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "input":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "IS_THEORY",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Google Gemini Chat Model2":
+            {
+                "ai_languageModel":
+                [
+                    [
+                        {
+                            "node": "EXPLAIN QUERY",
+                            "type": "ai_languageModel",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "EXPLAIN QUERY":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "save_response1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Anthropic Chat Model":
+            {
+                "ai_languageModel":
+                [
+                    [
+                        {
+                            "node": "SQL QUESTION",
+                            "type": "ai_languageModel",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Switch":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "send_message",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "get_tables",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Code2",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "send_message":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "save_response",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "save_response":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "save_prompt",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "save_prompt":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "save_response1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "save_prompt1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "save_prompt1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings":
+        {
+            "executionOrder": "v1"
+        },
+        "staticData": null,
+        "meta":
+        {
+            "templateCredsSetupCompleted": true
+        },
+        "pinData":
+        {},
+        "versionId": "2bde31b7-df0d-4648-bb54-77920f99a47c",
+        "triggerCount": 1,
+        "tags":
+        []
+    },
+    {
+        "createdAt": "2025-06-21T13:15:09.802Z",
+        "updatedAt": "2025-07-31T09:46:14.665Z",
+        "id": "UzVZhqSqANrpsNLJ",
+        "name": "detect_relevant_tables",
+        "active": false,
+        "isArchived": false,
+        "nodes":
+        [
+            {
+                "parameters":
+                {
+                    "promptType": "define",
+                    "text": "={{ $('trigger').item.json.user_prompt }}",
+                    "options":
+                    {
+                        "systemMessage": "=You are a database schema analyst. Your only task is to identify which tables from the database schema are relevant to answering a userÔö£├ÂÔö£├ºÔö£├╗s query.\n\nYou have access to a list of tables and their columns. Use that information to reason about which tables are involved in fulfilling the user's request.\n\nInstructions:\n- Use only the schema information Ôö£├ÂÔö£├ºÔö£├é do not guess table names.\n- If you are unsure about column meanings, prefer including potentially relevant tables rather than excluding them.\n- Return a JSON array of relevant table names, and nothing else.\n- Do not explain your reasoning.\n\n\nExample output:\n[\"comarcas\", \"concellos\"]\n\n**DATABASE SCHEMA**:\n\n{{ JSON.stringify($json.t) }}\n\n**COLUMN TYPES**:\n\n{{ JSON.stringify($json.types) }}",
+                        "maxIterations": 1,
+                        "returnIntermediateSteps": false
+                    }
+                },
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "typeVersion": 2,
+                "position":
+                [
+                    240,
+                    -140
+                ],
+                "id": "ad8b5fab-fb1e-412f-90e8-33b2635799e4",
+                "name": "AI Agent"
+            },
+            {
+                "parameters":
+                {
+                    "operation": "executeQuery",
+                    "query": "SELECT \n    n.nspname AS table_schema,\n    c.relname AS table_name,\n    JSON_AGG(\n        JSON_BUILD_OBJECT(\n            'column_name', a.attname,\n            'data_type', \n                CASE \n                    WHEN t.typname = 'geometry' THEN \n                        pg_catalog.format_type(a.atttypid, a.atttypmod)\n                    ELSE\n                        pg_catalog.format_type(a.atttypid, NULL)\n                END\n        ) ORDER BY a.attnum\n    ) AS columns\nFROM \n    pg_class c\nJOIN \n    pg_namespace n ON n.oid = c.relnamespace\nJOIN \n    pg_attribute a ON a.attrelid = c.oid\nJOIN \n    pg_type t ON t.oid = a.atttypid\nWHERE \n    c.relkind = 'r' -- only base tables\n    AND a.attnum > 0 -- exclude system columns\n    AND NOT a.attisdropped\n    AND n.nspname NOT IN ('pg_catalog', 'information_schema')\nGROUP BY \n    n.nspname, c.relname\nORDER BY \n    n.nspname, c.relname;",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.postgres",
+                "typeVersion": 2.6,
+                "position":
+                [
+                    -600,
+                    -140
+                ],
+                "id": "b493b1c8-57f5-4c24-bbe9-4e8fac042413",
+                "name": "get_tables",
+                "credentials":
+                {
+                    "postgres":
+                    {
+                        "id": "GhoZ8Law3InhrlJ9",
+                        "name": "Postgres geo"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "modelName": "models/gemini-2.5-flash-preview-05-20",
+                    "options":
+                    {}
+                },
+                "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+                "typeVersion": 1,
+                "position":
+                [
+                    140,
+                    80
+                ],
+                "id": "a7cc3103-6a5e-4bac-8e41-84eb9f6c5250",
+                "name": "Google Gemini Chat Model2",
+                "credentials":
+                {
+                    "googlePalmApi":
+                    {
+                        "id": "dz1rlHAydxuq2rod",
+                        "name": "Google Gemini(PaLM) Api account"
+                    }
+                }
+            },
+            {
+                "parameters":
+                {
+                    "aggregate": "aggregateAllItemData",
+                    "options":
+                    {}
+                },
+                "type": "n8n-nodes-base.aggregate",
+                "typeVersion": 1,
+                "position":
+                [
+                    -340,
+                    -140
+                ],
+                "id": "3d97b00e-01da-488d-b3a3-9273eed06578",
+                "name": "Aggregate"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "const rawInput = $input.first()?.json?.output;\nlet targetTables;\n\ntry {\n  targetTables = JSON.parse(rawInput);\n} catch {\n  return [];\n}\n\nif (!Array.isArray(targetTables) || targetTables.length === 0) return [];\n\nconst targetSet = new Set(targetTables.map(t => t.trim().toLowerCase()));\nconst data = $('Aggregate').first()?.json?.data;\n\nif (!Array.isArray(data)) return [];\n\nconst filtered = data.filter(t =>\n  targetSet.has(t.table_name?.trim().toLowerCase())\n);\n\nreturn { tables: filtered };"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    640,
+                    -140
+                ],
+                "id": "7465542b-44ae-4b04-b23c-2c9b02cf0e8f",
+                "name": "Code"
+            },
+            {
+                "parameters":
+                {
+                    "jsCode": "const typeMap = {\n  \"integer\": \"i\",\n  \"bigint\": \"b\",\n  \"character varying\": \"s\",\n  \"numeric\": \"n\",\n  \"USER-DEFINED\": \"u\",\n  \"jsonb\": \"j\"\n};\n\nconst compressed = {\n  t: [], \n  types: typeMap\n};\n\nfor (const table of $input.first().json.data) {\n  const tableName = table.table_name;\n  const columns = table.columns.map((col) => {\n    const typeCode = typeMap.hasOwnProperty(col.data_type)\n      ? typeMap[col.data_type]\n      : col.data_type;\n    return [col.column_name, typeCode];\n  });\n  compressed.t.push([tableName, columns]);\n}\n\nreturn compressed;\n"
+                },
+                "type": "n8n-nodes-base.code",
+                "typeVersion": 2,
+                "position":
+                [
+                    -100,
+                    -140
+                ],
+                "id": "e983d762-bba6-46c5-a42e-f45d9b998aee",
+                "name": "Code1"
+            },
+            {
+                "parameters":
+                {
+                    "workflowInputs":
+                    {
+                        "values":
+                        [
+                            {
+                                "name": "user_prompt"
+                            }
+                        ]
+                    }
+                },
+                "type": "n8n-nodes-base.executeWorkflowTrigger",
+                "typeVersion": 1.1,
+                "position":
+                [
+                    -820,
+                    -140
+                ],
+                "id": "a05b14e0-bd07-45c2-8176-fb08a5448603",
+                "name": "trigger"
+            }
+        ],
+        "connections":
+        {
+            "AI Agent":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "get_tables":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Aggregate",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Google Gemini Chat Model2":
+            {
+                "ai_languageModel":
+                [
+                    [
+                        {
+                            "node": "AI Agent",
+                            "type": "ai_languageModel",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Aggregate":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "Code1",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Code1":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "AI Agent",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "trigger":
+            {
+                "main":
+                [
+                    [
+                        {
+                            "node": "get_tables",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings":
+        {
+            "executionOrder": "v1"
+        },
+        "staticData": null,
+        "meta":
+        {
+            "templateCredsSetupCompleted": true
+        },
+        "pinData":
+        {},
+        "versionId": "b416da4a-63a2-45e1-8497-59ebf56cfd20",
+        "triggerCount": 0,
+        "tags":
+        []
+    }
+]

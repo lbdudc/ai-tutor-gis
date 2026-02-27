@@ -1,0 +1,94 @@
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5680:5678"
+    environment:
+      - GENERIC_TIMEZONE=${TZ}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB_CHAT=${POSTGRES_DB_CHAT}
+      - POSTGRES_DB_GEO=${POSTGRES_DB_GEO}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_SKIP_VERSION_GIT_CHECK=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows.json:/data/workflows.json
+      - ./credentials.json:/data/credentials.json
+      - ./init.sh:/data/init.sh
+      - ./.env:/data/.env
+    entrypoint: ["/bin/sh", "/data/init.sh"]
+    depends_on:
+      - postgres
+    networks:
+      - shared-net
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: always
+    ports:
+      - "${POSTGRES_PORT_HOST}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB_2=${POSTGRES_DB_2}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shared-net
+
+  backend:
+    build:
+      context: ../n8n_tutor_backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../n8n_tutor_backend:/app
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB_CHAT=${POSTGRES_DB_CHAT}
+      - POSTGRES_DB_GEO=${POSTGRES_DB_GEO}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - shared-net
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ../n8n_tutor_client
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../n8n_tutor_client:/app
+      - /app/node_modules
+    networks:
+      - shared-net
+    depends_on:
+      - backend
+    tty: true
+    stdin_open: true
+
+volumes:
+  n8n_data:
+  postgres_data:
+
+networks:
+  shared-net:
+    external: true

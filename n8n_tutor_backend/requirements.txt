@@ -1,0 +1,17 @@
+# Web Framework
+fastapi
+uvicorn
+
+# Database & ORM
+psycopg2-binary
+SQLAlchemy
+sqlparse
+
+# Authentication & Hashing
+bcrypt>=3.2.0
+passlib
+python-jose[cryptography]
+
+# Utilities
+python-dotenv
+requests

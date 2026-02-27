@@ -1,0 +1,52 @@
+{
+  "header": {
+    "title": "Teacher LLM Assistant"
+  },
+  "chat": {
+    "activeDocuments": "Active Documents",
+    "clearAll": "Clear all",
+    "initialMessage": "Hello! I'm your Teacher LLM Assistant. I can help you explore geographic data and answer questions about your subject materials. Upload some documents or ask me a question to get started!",
+    "inputPlaceholder": "Ask about your documents or request geographic analysis...",
+    "loadingMessage": "Analyzing documents and generating response...",
+    "uploadTitle": "Upload PDF documents",
+    "sources": "Sources",
+    "docsCleared": "All documents have been cleared from the conversation context.",
+    "docsAdded": "I've added {count} document(s) to our conversation: {fileNames}. You can now ask questions about their content!",
+    "queryGenerated": "I've generated a PostGIS query based on your request."
+  },
+  "map": {
+    "title": "Map",
+    "resetViewTitle": "Reset map view",
+    "toggleLayersTitle": "Toggle layers",
+    "statusReady": "Map ready",
+    "geometryError": "Error rendering geometry",
+    "noGeometryData": "No geometry data available"
+  },
+  "table": {
+    "title": "Table"
+  },
+  "query": {
+    "title": "PostGIS Query",
+    "copy": "Copy",
+    "execute": "Execute",
+    "placeholder": "Generated PostGIS queries will appear here",
+    "placeholderHint": "Ask about geographic data to get started",
+    "resultsFound": "{count} results found",
+    "queryResultPopupTitle": "Query Result",
+    "provincia": "Province",
+    "concellos": "Municipalities",
+    "num_concellos": "Number of municipalities",
+    "population": "Population",
+    "area": "Area"
+  },
+  "pdf": {
+    "title": "PDF",
+    "viewer": "PDF Viewer",
+    "noDocumentLoaded": "No PDF loaded",
+    "loadInstructions": "Click on a document reference to view it here",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fitToWidth": "Fit to Width",
+    "download": "Download"
+  }
+}
